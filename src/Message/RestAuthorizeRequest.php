@@ -2,9 +2,7 @@
 /**
  * PayPal REST Authorize Request
  */
-
 namespace Omnipay\PayPal\Message;
-
 /**
  * PayPal REST Authorize Request
  *
@@ -233,9 +231,9 @@ class RestAuthorizeRequest extends AbstractRestRequest
                     'invoice_number' => $this->getTransactionId()
                 )
             ),
-            'experience_profile_id' => $this->getExperienceProfileId()
+            'experience_profile_id' => $this->getExperienceProfileId(),
+            'application_context' => ['shipping_preference' => parent::getShippingPreference()],
         );
-
         $items = $this->getItems();
         if ($items) {
             $itemList = array();
@@ -250,10 +248,8 @@ class RestAuthorizeRequest extends AbstractRestRequest
             }
             $data['transactions'][0]['item_list']["items"] = $itemList;
         }
-
         if ($this->getCardReference()) {
             $this->validate('amount');
-
             $data['payer']['funding_instruments'][] = array(
                 'credit_card_token' => array(
                     'credit_card_id' => $this->getCardReference(),
@@ -262,7 +258,6 @@ class RestAuthorizeRequest extends AbstractRestRequest
         } elseif ($this->getCard()) {
             $this->validate('amount', 'card');
             $this->getCard()->validate();
-
             $data['payer']['funding_instruments'][] = array(
                 'credit_card' => array(
                     'number' => $this->getCard()->getNumber(),
@@ -282,7 +277,6 @@ class RestAuthorizeRequest extends AbstractRestRequest
                     )
                 )
             );
-
             // There's currently a quirk with the REST API that requires line2 to be
             // non-empty if it's present. Jul 14, 2014
             $line2 = $this->getCard()->getAddress2();
@@ -291,19 +285,15 @@ class RestAuthorizeRequest extends AbstractRestRequest
             }
         } else {
             $this->validate('amount', 'returnUrl', 'cancelUrl');
-
             unset($data['payer']['funding_instruments']);
-
             $data['payer']['payment_method'] = 'paypal';
             $data['redirect_urls'] = array(
                 'return_url' => $this->getReturnUrl(),
                 'cancel_url' => $this->getCancelUrl(),
             );
         }
-
         return $data;
     }
-
     /**
      * Get the experience profile id
      *
@@ -313,7 +303,6 @@ class RestAuthorizeRequest extends AbstractRestRequest
     {
         return $this->getParameter('experienceProfileId');
     }
-
     /**
      * Set the experience profile id
      *
@@ -324,7 +313,6 @@ class RestAuthorizeRequest extends AbstractRestRequest
     {
         return $this->setParameter('experienceProfileId', $value);
     }
-
     /**
      * Get transaction description.
      *
@@ -337,7 +325,6 @@ class RestAuthorizeRequest extends AbstractRestRequest
     {
         $id = $this->getTransactionId();
         $desc = parent::getDescription();
-
         if (empty($id)) {
             return $desc;
         } elseif (empty($desc)) {
@@ -346,7 +333,6 @@ class RestAuthorizeRequest extends AbstractRestRequest
             return "$id : $desc";
         }
     }
-
     /**
      * Get transaction endpoint.
      *
@@ -358,7 +344,6 @@ class RestAuthorizeRequest extends AbstractRestRequest
     {
         return parent::getEndpoint() . '/payments/payment';
     }
-
     protected function createResponse($data, $statusCode)
     {
         return $this->response = new RestAuthorizeResponse($this, $data, $statusCode);

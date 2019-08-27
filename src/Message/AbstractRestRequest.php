@@ -2,11 +2,8 @@
 /**
  * PayPal Abstract REST Request
  */
-
 namespace Omnipay\PayPal\Message;
-
 use Omnipay\Common\Exception\InvalidResponseException;
-
 /**
  * PayPal Abstract REST Request
  *
@@ -31,7 +28,9 @@ use Omnipay\Common\Exception\InvalidResponseException;
 abstract class AbstractRestRequest extends \Omnipay\Common\Message\AbstractRequest
 {
     const API_VERSION = 'v1';
-
+    const SHIPPING_PREFERENCE_NO_SHIPPING = 'NO_SHIPPING';
+    const SHIPPING_PREFERENCE_GET_FROM_FILE = 'GET_FROM_FILE';
+    const SHIPPING_PREFERENCE_SET_PROVIDED_ADDRESS = 'SET_PROVIDED_ADDRESS';
     /**
      * Sandbox Endpoint URL
      *
@@ -44,7 +43,6 @@ abstract class AbstractRestRequest extends \Omnipay\Common\Message\AbstractReque
      * @var string URL
      */
     protected $testEndpoint = 'https://api.sandbox.paypal.com';
-
     /**
      * Live Endpoint URL
      *
@@ -54,72 +52,44 @@ abstract class AbstractRestRequest extends \Omnipay\Common\Message\AbstractReque
      * @var string URL
      */
     protected $liveEndpoint = 'https://api.paypal.com';
-
     /**
      * PayPal Payer ID
      *
      * @var string PayerID
      */
     protected $payerId = null;
-
-    protected $referrerCode;
-
-    /**
-     * @return string
-     */
-    public function getReferrerCode()
-    {
-        return $this->referrerCode;
-    }
-
-    /**
-     * @param string $referrerCode
-     */
-    public function setReferrerCode($referrerCode)
-    {
-        $this->referrerCode = $referrerCode;
-    }
-
     public function getClientId()
     {
         return $this->getParameter('clientId');
     }
-
     public function setClientId($value)
     {
         return $this->setParameter('clientId', $value);
     }
-
     public function getSecret()
     {
         return $this->getParameter('secret');
     }
-
     public function setSecret($value)
     {
         return $this->setParameter('secret', $value);
     }
-
     public function getToken()
     {
         return $this->getParameter('token');
     }
-
     public function setToken($value)
     {
         return $this->setParameter('token', $value);
     }
-
     public function getPayerId()
     {
         return $this->getParameter('payerId');
     }
-
     public function setPayerId($value)
     {
         return $this->setParameter('payerId', $value);
     }
-
     /**
      * Get HTTP Method.
      *
@@ -131,16 +101,13 @@ abstract class AbstractRestRequest extends \Omnipay\Common\Message\AbstractReque
     {
         return 'POST';
     }
-
     protected function getEndpoint()
     {
         $base = $this->getTestMode() ? $this->testEndpoint : $this->liveEndpoint;
         return $base . '/' . self::API_VERSION;
     }
-
     public function sendData($data)
     {
-
         // Guzzle HTTP Client createRequest does funny things when a GET request
         // has attached data, so don't send the data if the method is GET.
         if ($this->getHttpMethod() == 'GET') {
@@ -150,12 +117,10 @@ abstract class AbstractRestRequest extends \Omnipay\Common\Message\AbstractReque
             $body = $this->toJSON($data);
             $requestUrl = $this->getEndpoint();
         }
-
         // Might be useful to have some debug code here, PayPal especially can be
         // a bit fussy about data formats and ordering.  Perhaps hook to whatever
         // logging engine is being used.
         // echo "Data == " . json_encode($data) . "\n";
-
         try {
             $httpResponse = $this->httpClient->request(
                 $this->getHttpMethod(),
@@ -164,7 +129,6 @@ abstract class AbstractRestRequest extends \Omnipay\Common\Message\AbstractReque
                     'Accept' => 'application/json',
                     'Authorization' => 'Bearer ' . $this->getToken(),
                     'Content-type' => 'application/json',
-                    'PayPal-Partner-Attribution-Id' => $this->getReferrerCode(),
                 ),
                 $body
             );
@@ -179,7 +143,6 @@ abstract class AbstractRestRequest extends \Omnipay\Common\Message\AbstractReque
             );
         }
     }
-
     /**
      * Returns object JSON representation required by PayPal.
      * The PayPal REST API requires the use of JSON_UNESCAPED_SLASHES.
@@ -200,9 +163,33 @@ abstract class AbstractRestRequest extends \Omnipay\Common\Message\AbstractReque
         }
         return str_replace('\\/', '/', json_encode($data, $options));
     }
-
     protected function createResponse($data, $statusCode)
     {
         return $this->response = new RestResponse($this, $data, $statusCode);
+    }
+    public function getShippingPreference()
+    {
+        return $this->getParameter('shippingPreference');
+    }
+    /**
+     * Set the shipping preference
+     *
+     * Supported values:
+     * 'NO_SHIPPING': redacts shipping address fields from the PayPal pages.
+     * Recommended value to use for digital goods.
+     * 'GET_FROM_FILE': Get the shipping address selected by the buyer on PayPal pages.
+     * 'SET_PROVIDED_ADDRESS' (not yet fully supported by the library since shipping address can't be provided):
+     * Use the address provided by the merchant. Buyer is not able to change the address on the PayPal pages.
+     * If merchant doesn't pass an address, buyer has the option to choose the address on PayPal pages.
+     *
+     * @param  string $value
+     *
+     * @return bool.
+     * @link https://developer.paypal.com/docs/api/orders/#definition-application_context
+     * @link https://www.paypalobjects.com/api/checkout.js
+     */
+    public function setShippingPreference($value)
+    {
+        return $this->setParameter('shippingPreference', $value);
     }
 }
